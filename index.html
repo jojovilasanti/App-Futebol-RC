@@ -1,0 +1,86 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Futebol RC</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              'brand-blue': {
+                'light': '#3b82f6',
+                'DEFAULT': '#2563eb',
+                'dark': '#1d4ed8',
+              },
+              'brand-dark-blue': {
+                'light': '#1e3a8a',
+                'DEFAULT': '#1e40af',
+                'dark': '#1c3d5a',
+              },
+              'brand-gray': {
+                'light': '#f9fafb',
+                'DEFAULT': '#f3f4f6',
+                'dark': '#e5e7eb',
+              },
+              'brand-green': {
+                'light': '#22c55e',
+                'DEFAULT': '#16a34a',
+                'dark': '#15803d',
+              },
+              'brand-purple': {
+                'light': '#a855f7',
+                'DEFAULT': '#9333ea',
+                'dark': '#7e22ce',
+              },
+              'sidebar-bg': '#111827',
+              'main-bg-dark': '#1f2937',
+              'main-bg-light': '#f3f4f6',
+            },
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            animation: {
+              'reveal': 'reveal 0.5s ease-out forwards',
+              'slot-machine': 'slot-machine 1.5s ease-in-out forwards',
+              'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            },
+            keyframes: {
+              reveal: {
+                '0%': { transform: 'scale(0.9) translateY(10px)', opacity: '0' },
+                '100%': { transform: 'scale(1) translateY(0)', opacity: '1' },
+              },
+              'slot-machine': {
+                 '0%': { transform: 'translateY(-100%)', opacity: '0' },
+                 '20%': { transform: 'translateY(0)', opacity: '1' },
+                 '80%': { transform: 'translateY(0)', opacity: '1' },
+                 '100%': { transform: 'translateY(100%)', opacity: '0' },
+              }
+            }
+          }
+        }
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
