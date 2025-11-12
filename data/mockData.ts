@@ -1,12 +1,20 @@
 import { User, Game, Championship } from '../types';
 
+const generateRandomAttributes = () => ({
+  attack: Math.floor(Math.random() * 50) + 50, // 50-99
+  defense: Math.floor(Math.random() * 50) + 50,
+  speed: Math.floor(Math.random() * 50) + 50,
+  passing: Math.floor(Math.random() * 50) + 50,
+  dribbling: Math.floor(Math.random() * 50) + 50,
+});
+
 export const MOCK_USERS: User[] = [
-  { id: '6', name: 'Admin', nickname: 'Admin', position: 'Atacante', avatarUrl: 'https://picsum.photos/seed/6/200', membershipNumber: 'admin', role: 'admin', goals: 0, status: 'active', email: 'admin@radioclube.com' },
-  { id: '1', name: 'Carlos Alberto', nickname: 'Carlão', position: 'Zagueiro', avatarUrl: 'https://picsum.photos/seed/1/200', membershipNumber: '1001', role: 'member', goals: 5, status: 'active', email: 'carlos.alberto@example.com' },
-  { id: '2', name: 'Roberto Silva', nickname: 'Beto', position: 'Atacante', avatarUrl: 'https://picsum.photos/seed/2/200', membershipNumber: '1002', role: 'member', goals: 25, status: 'active', email: 'roberto.silva@example.com' },
-  { id: '3', name: 'João Pereira', nickname: 'JP', position: 'Meio-campo', avatarUrl: 'https://picsum.photos/seed/3/200', membershipNumber: '1003', role: 'member', goals: 12, status: 'active', email: 'joao.pereira@example.com' },
-  { id: '4', name: 'Fernando Lima', nickname: 'Fernandinho', position: 'Lateral', avatarUrl: 'https://picsum.photos/seed/4/200', membershipNumber: '1004', role: 'member', goals: 8, status: 'active', email: 'fernando.lima@example.com' },
-  { id: '5', name: 'André Marques', nickname: 'Deko', position: 'Goleiro', avatarUrl: 'https://picsum.photos/seed/5/200', membershipNumber: '1005', role: 'member', goals: 1, status: 'active', email: 'andre.marques@example.com' },
+  { id: '6', name: 'Admin', nickname: 'Admin', position: 'Atacante', avatarUrl: 'https://picsum.photos/seed/6/200', membershipNumber: 'admin', role: 'admin', goals: 0, status: 'active', email: 'admin@radioclube.com', rating: 5, level: 99, xp: 100, attributes: generateRandomAttributes() },
+  { id: '1', name: 'Carlos Alberto', nickname: 'Carlão', position: 'Zagueiro', avatarUrl: 'https://picsum.photos/seed/1/200', membershipNumber: '1001', role: 'member', goals: 5, status: 'active', email: 'carlos.alberto@example.com', rating: 4.5, level: 12, xp: 50, attributes: generateRandomAttributes() },
+  { id: '2', name: 'Roberto Silva', nickname: 'Beto', position: 'Atacante', avatarUrl: 'https://picsum.photos/seed/2/200', membershipNumber: '1002', role: 'member', goals: 25, status: 'active', email: 'roberto.silva@example.com', rating: 4.8, level: 25, xp: 80, attributes: generateRandomAttributes(), achievements: ['top_scorer'] },
+  { id: '3', name: 'João Pereira', nickname: 'JP', position: 'Meio-campo', avatarUrl: 'https://picsum.photos/seed/3/200', membershipNumber: '1003', role: 'member', goals: 12, status: 'active', email: 'joao.pereira@example.com', rating: 4.2, level: 18, xp: 20, attributes: generateRandomAttributes() },
+  { id: '4', name: 'Fernando Lima', nickname: 'Fernandinho', position: 'Lateral', avatarUrl: 'https://picsum.photos/seed/4/200', membershipNumber: '1004', role: 'member', goals: 8, status: 'active', email: 'fernando.lima@example.com', rating: 3.9, level: 15, xp: 90, attributes: generateRandomAttributes() },
+  { id: '5', name: 'André Marques', nickname: 'Deko', position: 'Goleiro', avatarUrl: 'https://picsum.photos/seed/5/200', membershipNumber: '1005', role: 'member', goals: 1, status: 'active', email: 'andre.marques@example.com', rating: 4.6, level: 22, xp: 30, attributes: generateRandomAttributes() },
   { id: '72', name: 'Pedro Novo', nickname: 'Pedrinho', position: 'Atacante', avatarUrl: 'https://picsum.photos/seed/72/200', membershipNumber: '3001', role: 'member', goals: 0, status: 'pending', email: 'pedro.novo@example.com' },
   { id: '73', name: 'Mariana Costa', nickname: 'Mari', position: 'Meio-campo', avatarUrl: 'https://picsum.photos/seed/73/200', membershipNumber: '3002', role: 'member', goals: 0, status: 'pending', email: 'mariana.costa@example.com' },
   ...Array.from({ length: 65 }, (_, i) => ({
@@ -20,6 +28,11 @@ export const MOCK_USERS: User[] = [
     goals: Math.floor(Math.random() * 20),
     status: 'active' as 'active',
     email: `jogador${i+7}@example.com`,
+    rating: Math.round((Math.random() * 1.5 + 3.5) * 10) / 10, // 3.5 to 5.0
+    level: Math.floor(Math.random() * 30) + 1,
+    xp: Math.floor(Math.random() * 100),
+    attributes: generateRandomAttributes(),
+    achievements: i > 50 ? ['veteran'] : []
   }))
 ];
 
@@ -121,7 +134,7 @@ export const MOCK_GAMES: Game[] = [
     status: 'finished',
     registrants: MOCK_USERS.slice(5, 30).map(u => u.id),
     drawnPlayers: MOCK_USERS.slice(5, 25).map(u => u.id),
-    captains: [],
+    captains: ['2', '3'],
     maxPlayers: 20,
   }
 ];

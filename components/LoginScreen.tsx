@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { SunIcon, MoonIcon } from './icons/Icons';
 
@@ -8,9 +9,10 @@ interface LoginScreenProps {
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
   onNavigateToRegister: () => void;
+  logoUrl: string | null;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginAsGuest, theme, onToggleTheme, onNavigateToRegister }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginAsGuest, theme, onToggleTheme, onNavigateToRegister, logoUrl }) => {
   const [name, setName] = useState('');
   const [membershipNumber, setMembershipNumber] = useState('');
 
@@ -34,6 +36,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginAsGuest, them
         </div>
       <div className="w-full max-w-md p-8 space-y-8">
         <div className="text-center">
+           {logoUrl && (
+            <img src={logoUrl} alt="Logo" className="mx-auto h-20 w-auto mb-4 object-contain" />
+          )}
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900 dark:text-white">
             Futebol RC
           </h2>

@@ -109,12 +109,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         }`}
         aria-label="Sidebar"
       >
-        <div className="flex items-center justify-center p-6 border-b border-gray-700/50 h-20 shrink-0">
-           {logoUrl ? (
-             <img src={logoUrl} alt="Logo" className="h-12 object-contain" />
-           ) : (
-             <h1 className="text-2xl font-bold text-white">Futebol RC</h1>
+        <div className="flex items-center justify-center p-6 border-b border-gray-700/50 h-20 shrink-0 gap-3">
+           {logoUrl && (
+             <img src={logoUrl} alt="Logo" className="h-10 w-10 object-contain" />
            )}
+           <h1 className="text-2xl font-bold text-white">Futebol RC</h1>
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">

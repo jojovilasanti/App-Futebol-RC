@@ -14,6 +14,7 @@ import ChampionshipsScreen from './components/ChampionshipsScreen';
 import ChampionshipDetailsScreen from './components/ChampionshipDetailsScreen';
 import ChampionshipForm from './components/ChampionshipForm';
 import TradingScreen from './components/TradingScreen';
+import ProfileScreen from './components/ProfileScreen';
 import { MenuIcon, SunIcon, MoonIcon } from './components/icons/Icons';
 
 type NewUserData = Omit<User, 'id' | 'avatarUrl' | 'role' | 'goals' | 'status'>;
@@ -343,6 +344,7 @@ const App: React.FC = () => {
                     theme={theme} 
                     onToggleTheme={toggleTheme} 
                     onNavigateToRegister={() => setAuthView('register')}
+                    logoUrl={logoUrl}
                 />;
     }
     return <RegisterScreen 
@@ -419,12 +421,10 @@ const App: React.FC = () => {
                 onCancel={() => navigateTo(championshipFormMode === 'edit' && activeChampionshipId ? 'championshipDetails' : 'championships', activeChampionshipId || undefined)}
             />
         );
-      case 'results': // Fallback for old navigation
-        return <ResultsScreen games={games} users={users} />;
+      case 'profile':
+        return <ProfileScreen user={currentUser} games={games} />;
       case 'rules':
         return <div className="bg-white dark:bg-sidebar-bg p-6 rounded-lg text-center"><h2 className="text-2xl font-bold">Página de Regras</h2><p>Em construção.</p></div>
-      case 'profile':
-        return <div className="bg-white dark:bg-sidebar-bg p-6 rounded-lg text-center"><h2 className="text-2xl font-bold">Página de Perfil</h2><p>Em construção.</p></div>
       default:
         return <p>Página não encontrada.</p>;
     }
