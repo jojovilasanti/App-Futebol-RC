@@ -15,6 +15,7 @@ import ChampionshipDetailsScreen from './components/ChampionshipDetailsScreen';
 import ChampionshipForm from './components/ChampionshipForm';
 import TradingScreen from './components/TradingScreen';
 import ProfileScreen from './components/ProfileScreen';
+import RatingScreen from './components/RatingScreen';
 import { MenuIcon, SunIcon, MoonIcon } from './components/icons/Icons';
 
 type NewUserData = Omit<User, 'id' | 'avatarUrl' | 'role' | 'goals' | 'status'>;
@@ -33,11 +34,25 @@ const GUEST_USER: User = {
 const App: React.FC = () => {
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>(MOCK_USERS);
+  
+  const [users, setUsers] = useState<User[]>(() => {
+    const saved = localStorage.getItem('futebol_rc_users');
+    return saved ? JSON.parse(saved) : MOCK_USERS;
+  });
+  
   const [games, setGames] = useState<Game[]>(MOCK_GAMES);
   const [championships, setChampionships] = useState<Championship[]>(MOCK_CHAMPIONSHIPS);
   const [tradeProposals, setTradeProposals] = useState<Trade[]>([]);
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  
+  const [invitations, setInvitations] = useState<Invitation[]>(() => {
+      const saved = localStorage.getItem('futebol_rc_invitations');
+      return saved ? JSON.parse(saved).map((inv: Invitation) => ({ ...inv, sentAt: new Date(inv.sentAt) })) : [];
+  });
+  
+  const [logoUrl, setLogoUrl] = useState<string | null>(() => {
+      return localStorage.getItem('futebol_rc_logo') || null;
+  });
+
   const [activeView, setActiveView] = useState<View>('home');
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const [activeChampionshipId, setActiveChampionshipId] = useState<string | null>(null);
@@ -45,8 +60,7 @@ const App: React.FC = () => {
   const [championshipFormMode, setChampionshipFormMode] = useState<'create' | 'edit'>('create');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
-
+  
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove(theme === 'light' ? 'dark' : 'light');
@@ -63,7 +77,7 @@ const App: React.FC = () => {
 
   const handleLogin = (name: string, membershipNumber: string) => {
     const user = users.find(
-      u => u.name.toLowerCase() === name.toLowerCase() && u.membershipNumber === membershipNumber
+      u => (u.name.toLowerCase() === name.toLowerCase() || u.nickname.toLowerCase() === name.toLowerCase()) && u.membershipNumber === membershipNumber
     );
     if (user) {
       if (user.status === 'pending') {
@@ -91,55 +105,35 @@ const App: React.FC = () => {
         goals: 0,
         status: 'pending',
     };
-    setUsers(prev => [...prev, newUser]);
     
-    setInvitations(prev => prev.map(inv => 
+    const updatedUsers = [...users, newUser];
+    setUsers(updatedUsers);
+    localStorage.setItem('futebol_rc_users', JSON.stringify(updatedUsers));
+    
+    const updatedInvitations = invitations.map((inv): Invitation =>
         inv.email.toLowerCase() === newUser.email?.toLowerCase() ? { ...inv, status: 'registered' } : inv
-    ));
+    );
+    setInvitations(updatedInvitations);
+    localStorage.setItem('futebol_rc_invitations', JSON.stringify(updatedInvitations));
 
     alert('Cadastro realizado com sucesso! Aguarde a aprovação do administrador para acessar o sistema.');
     setAuthView('login');
   };
-
-  const handleApproveUser = (userId: string) => {
-    setUsers(prev => prev.map(u => u.id === userId ? {...u, status: 'active'} : u));
-  };
-
-  const handleRejectUser = (userId: string) => {
-      if (window.confirm('Tem certeza que deseja recusar este cadastro?')) {
-          setUsers(prev => prev.filter(u => u.id !== userId));
-      }
-  };
-
-  const handlePromoteUserToAdmin = (userId: string) => {
-    if (window.confirm('Tem certeza que deseja promover este usuário a administrador? Esta ação não pode ser desfeita.')) {
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: 'admin' } : u));
+  
+  const handleSaveChangesFromAdmin = (data: { users: User[], invitations: Invitation[], logoUrl: string | null }) => {
+    setUsers(data.users);
+    localStorage.setItem('futebol_rc_users', JSON.stringify(data.users));
+    
+    setInvitations(data.invitations);
+    localStorage.setItem('futebol_rc_invitations', JSON.stringify(data.invitations));
+    
+    setLogoUrl(data.logoUrl);
+    if (data.logoUrl) {
+        localStorage.setItem('futebol_rc_logo', data.logoUrl);
+    } else {
+        localStorage.removeItem('futebol_rc_logo');
     }
-  };
-
-  const handleSendInvite = (email: string) => {
-      const userExists = users.some(u => u.email?.toLowerCase() === email.toLowerCase());
-      if (userExists) {
-          alert('Já existe um sócio cadastrado com este e-mail.');
-          return;
-      }
-      const invitationExists = invitations.some(inv => inv.email.toLowerCase() === email.toLowerCase());
-      if (invitationExists) {
-          alert('Um convite para este e-mail já foi enviado.');
-          return;
-      }
-
-      const newInvitation: Invitation = {
-          id: `inv-${Date.now()}`,
-          email: email,
-          status: 'sent',
-          sentAt: new Date(),
-      };
-      setInvitations(prev => [newInvitation, ...prev]);
-  };
-
-  const handleUpdateLogo = (newLogoDataUrl: string) => {
-    setLogoUrl(newLogoDataUrl);
+    alert('Alterações salvas com sucesso!');
   };
 
   const handleLogout = () => {
@@ -163,16 +157,16 @@ const App: React.FC = () => {
     }
 
     if (view === 'championshipForm') {
-      if (id) { // Editing existing
+      if (id) {
         setActiveChampionshipId(id);
         setChampionshipFormMode('edit');
-      } else { // Creating new
+      } else {
         setActiveChampionshipId(null);
         setChampionshipFormMode('create');
       }
     }
     
-    setSidebarOpen(false); // Close sidebar on navigation
+    setSidebarOpen(false);
   };
 
   const handleRegister = useCallback((gameId: string) => {
@@ -214,16 +208,13 @@ const App: React.FC = () => {
         const sourceGame = gamesCopy.find(g => g.id === gameId);
         if (!sourceGame) return prevGames;
 
-        // 1. Update the game that was just drawn
         sourceGame.status = 'finished';
         sourceGame.drawnPlayers = drawnIds;
 
-        // 2. Find subsequent games on the same day
         const sameDayGames = gamesCopy
             .filter(g => g.date === sourceGame.date && g.id !== sourceGame.id && g.status !== 'finished')
             .sort((a, b) => a.time.localeCompare(b.time));
 
-        // 3. Distribute remaining players
         let playersToDistribute = [...remainingIds];
         for (const nextGame of sameDayGames) {
             if (playersToDistribute.length === 0) break;
@@ -233,7 +224,6 @@ const App: React.FC = () => {
             nextGame.status = 'finished'; 
         }
 
-        // 4. Check if all games for this day are done to start trading period
         const allGamesForDay = gamesCopy.filter(g => g.date === sourceGame.date);
         const allFinished = allGamesForDay.every(g => g.status === 'finished');
 
@@ -249,9 +239,9 @@ const App: React.FC = () => {
   };
 
   const handleSaveChampionship = (championshipData: Omit<Championship, 'id' | 'teams'> | Championship) => {
-    if ('id' in championshipData) { // Update
+    if ('id' in championshipData) {
       setChampionships(prev => prev.map(c => c.id === championshipData.id ? {...c, ...championshipData} : c));
-    } else { // Create
+    } else {
       const newChampionship: Championship = {
         ...championshipData,
         id: `champ${Date.now()}`,
@@ -276,7 +266,6 @@ const App: React.FC = () => {
   const handleProposeTrade = (toPlayerId: string) => {
     if (!currentUser) return;
     
-    // Find the games involved
     const fromGame = games.find(g => g.drawnPlayers.includes(currentUser.id) && g.date === activeTradingDate);
     const toGame = games.find(g => g.drawnPlayers.includes(toPlayerId) && g.date === activeTradingDate);
 
@@ -306,14 +295,12 @@ const App: React.FC = () => {
       }
       
       if (response === 'accepted') {
-          // Finalize trade
           setGames(prevGames => {
               const newGames = [...prevGames];
               const fromGame = newGames.find(g => g.id === trade.fromGameId);
               const toGame = newGames.find(g => g.id === trade.toGameId);
 
               if (fromGame && toGame) {
-                  // Swap players
                   fromGame.drawnPlayers = fromGame.drawnPlayers.filter(id => id !== trade.fromPlayerId).concat(trade.toPlayerId);
                   toGame.drawnPlayers = toGame.drawnPlayers.filter(id => id !== trade.toPlayerId).concat(trade.fromPlayerId);
               }
@@ -326,6 +313,38 @@ const App: React.FC = () => {
       }
   };
 
+  const handleUpdateProfile = (updatedUserData: Partial<User>) => {
+      if (!currentUser) return;
+      const updatedUser = { ...currentUser, ...updatedUserData };
+      
+      const newUsers = users.map(u => u.id === updatedUser.id ? updatedUser : u);
+      setUsers(newUsers);
+      setCurrentUser(updatedUser);
+      localStorage.setItem('futebol_rc_users', JSON.stringify(newUsers));
+      alert('Perfil atualizado com sucesso!');
+  };
+
+  const handleRatePlayers = (ratings: Record<string, { attack: number; defense: number; speed: number; passing: number; }>) => {
+      const updatedUsers = users.map(user => {
+          if (ratings[user.id] && user.attributes) {
+              const playerRatings = ratings[user.id];
+              const newAttributes = { ...user.attributes };
+
+              (Object.keys(playerRatings) as Array<keyof typeof playerRatings>).forEach(attrKey => {
+                  if (newAttributes[attrKey]) {
+                      newAttributes[attrKey].score += playerRatings[attrKey] * 10;
+                      newAttributes[attrKey].count += 1;
+                  }
+              });
+              return { ...user, attributes: newAttributes };
+          }
+          return user;
+      });
+      setUsers(updatedUsers);
+      localStorage.setItem('futebol_rc_users', JSON.stringify(updatedUsers));
+      alert('Avaliações enviadas com sucesso!');
+      navigateTo('profile');
+  };
 
   const activeGame = useMemo(() => games.find(g => g.id === activeGameId), [games, activeGameId]);
   const activeChampionship = useMemo(() => championships.find(c => c.id === activeChampionshipId), [championships, activeChampionshipId]);
@@ -335,6 +354,28 @@ const App: React.FC = () => {
     const dates = new Set(games.filter(g => g.tradingEndTime && g.tradingEndTime > Date.now()).map(g => g.date));
     return Array.from(dates);
   }, [games]);
+
+  const lastGameForCurrentUser = useMemo(() => {
+    if (!currentUser) return null;
+    return games
+      .filter(g => g.status === 'finished' && g.drawnPlayers.includes(currentUser.id))
+      .sort((a, b) => {
+        const [dayA, monthA, yearA] = a.date.split('/');
+        const dateA = new Date(`${yearA}-${monthA}-${dayA}T${a.time}:00`);
+        const [dayB, monthB, yearB] = b.date.split('/');
+        const dateB = new Date(`${yearB}-${monthB}-${dayB}T${b.time}:00`);
+        return dateB.getTime() - dateA.getTime();
+      })[0];
+  }, [games, currentUser]);
+  
+  const playersToRate = useMemo(() => {
+      if (!lastGameForCurrentUser || !currentUser) return [];
+      return lastGameForCurrentUser.drawnPlayers
+          .filter(id => id !== currentUser.id)
+          .map(id => users.find(u => u.id === id))
+          .filter((u): u is User => !!u);
+  }, [lastGameForCurrentUser, users, currentUser]);
+
 
   if (!currentUser) {
     if (authView === 'login') {
@@ -374,14 +415,10 @@ const App: React.FC = () => {
           games={games} 
           users={users} 
           invitations={invitations}
+          currentLogo={logoUrl}
           onNavigate={navigateTo}
           onStartDraw={handleStartDraw}
-          onApproveUser={handleApproveUser}
-          onRejectUser={handleRejectUser}
-          onSendInvite={handleSendInvite}
-          onPromoteUserToAdmin={handlePromoteUserToAdmin}
-          onUpdateLogo={handleUpdateLogo}
-          currentLogo={logoUrl}
+          onSaveChanges={handleSaveChangesFromAdmin}
         />;
       case 'trading':
         return activeTradingDate && activeTradingGames.length > 0 ? (
@@ -422,7 +459,20 @@ const App: React.FC = () => {
             />
         );
       case 'profile':
-        return <ProfileScreen user={currentUser} games={games} />;
+        return <ProfileScreen 
+            user={currentUser} 
+            games={games} 
+            onUpdateProfile={handleUpdateProfile}
+            onNavigate={navigateTo}
+            hasLastGameToRate={playersToRate.length > 0}
+            />;
+      case 'rating':
+        return <RatingScreen
+            currentUser={currentUser}
+            playersToRate={playersToRate}
+            onRatePlayers={handleRatePlayers}
+            onCancel={() => navigateTo('profile')}
+            />
       case 'rules':
         return <div className="bg-white dark:bg-sidebar-bg p-6 rounded-lg text-center"><h2 className="text-2xl font-bold">Página de Regras</h2><p>Em construção.</p></div>
       default:
@@ -446,7 +496,6 @@ const App: React.FC = () => {
       />
       
       <div className="flex-1 flex flex-col transition-all duration-300 md:ml-0">
-        {/* Mobile Header */}
         <header className="md:hidden sticky top-0 z-30 bg-white/80 dark:bg-main-bg-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700/50 flex items-center justify-between p-4">
           <button onClick={() => setSidebarOpen(true)} aria-label="Abrir menu">
             <MenuIcon className="w-6 h-6" />

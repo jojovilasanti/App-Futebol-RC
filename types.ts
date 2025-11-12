@@ -11,17 +11,18 @@ export interface User {
   email?: string;
   
   // Game profile fields
-  rating?: number; // 1-5 stars
+  rating?: number; // 1-5 stars from overall performance, can be calculated
   level?: number;
   xp?: number;
   attributes?: {
-    attack: number; // 0-100
-    defense: number;
-    speed: number;
-    passing: number;
-    dribbling: number;
+    attack: { score: number; count: number };
+    defense: { score: number; count: number };
+    speed: { score: number; count: number };
+    passing: { score: number; count: number };
   };
   achievements?: string[];
+  favoriteTeam?: string;
+  physicalCondition?: 'Excelente' | 'Bom' | 'Regular' | 'Lesionado';
 }
 
 export type GameStatus = 'open' | 'closed' | 'drawing' | 'finished';
@@ -74,4 +75,4 @@ export interface Achievement {
 }
 
 
-export type View = 'home' | 'draw' | 'admin' | 'results' | 'history' | 'rules' | 'profile' | 'championships' | 'championshipDetails' | 'championshipForm' | 'trading';
+export type View = 'home' | 'draw' | 'admin' | 'results' | 'history' | 'rules' | 'profile' | 'championships' | 'championshipDetails' | 'championshipForm' | 'trading' | 'rating';
