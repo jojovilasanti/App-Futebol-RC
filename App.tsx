@@ -16,6 +16,7 @@ import ChampionshipForm from './components/ChampionshipForm';
 import TradingScreen from './components/TradingScreen';
 import ProfileScreen from './components/ProfileScreen';
 import RatingScreen from './components/RatingScreen';
+import GameForm from './components/GameForm';
 import { MenuIcon, SunIcon, MoonIcon } from './components/icons/Icons';
 
 type NewUserData = Omit<User, 'id' | 'avatarUrl' | 'role' | 'goals' | 'status'>;
@@ -40,7 +41,11 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : MOCK_USERS;
   });
   
-  const [games, setGames] = useState<Game[]>(MOCK_GAMES);
+  const [games, setGames] = useState<Game[]>(() => {
+    const saved = localStorage.getItem('futebol_rc_games');
+    return saved ? JSON.parse(saved) : MOCK_GAMES;
+  });
+
   const [championships, setChampionships] = useState<Championship[]>(MOCK_CHAMPIONSHIPS);
   const [tradeProposals, setTradeProposals] = useState<Trade[]>([]);
   
@@ -66,6 +71,10 @@ const App: React.FC = () => {
     root.classList.remove(theme === 'light' ? 'dark' : 'light');
     root.classList.add(theme);
   }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('futebol_rc_games', JSON.stringify(games));
+  }, [games]);
 
   const toggleTheme = () => {
     setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
@@ -259,6 +268,25 @@ const App: React.FC = () => {
     }
   };
   
+    const handleSaveGame = (gameData: Omit<Game, 'id' | 'registrants' | 'drawnPlayers' | 'status' | 'captains'>) => {
+      const newGame: Game = {
+        ...gameData,
+        id: `game-${Date.now()}`,
+        registrants: [],
+        drawnPlayers: [],
+        status: 'open',
+        captains: [],
+      };
+      setGames(prev => [...prev, newGame]);
+      navigateTo('admin');
+  };
+
+  const handleDeleteGame = (gameId: string) => {
+      if (window.confirm('Tem certeza que deseja excluir este jogo? Esta ação não pode ser desfeita e removerá todos os inscritos.')) {
+        setGames(prev => prev.filter(g => g.id !== gameId));
+      }
+  };
+
   const tradedPlayerIds = useMemo(() => 
     tradeProposals.filter(t => t.status === 'accepted').flatMap(t => [t.fromPlayerId, t.toPlayerId]), 
   [tradeProposals]);
@@ -419,6 +447,7 @@ const App: React.FC = () => {
           onNavigate={navigateTo}
           onStartDraw={handleStartDraw}
           onSaveChanges={handleSaveChangesFromAdmin}
+          onDeleteGame={handleDeleteGame}
         />;
       case 'trading':
         return activeTradingDate && activeTradingGames.length > 0 ? (
@@ -456,6 +485,13 @@ const App: React.FC = () => {
                 initialData={activeChampionship}
                 onSave={handleSaveChampionship}
                 onCancel={() => navigateTo(championshipFormMode === 'edit' && activeChampionshipId ? 'championshipDetails' : 'championships', activeChampionshipId || undefined)}
+            />
+        );
+      case 'gameForm':
+        return (
+            <GameForm
+                onSave={handleSaveGame}
+                onCancel={() => navigateTo('admin')}
             />
         );
       case 'profile':
@@ -497,9 +533,14 @@ const App: React.FC = () => {
       
       <div className="flex-1 flex flex-col transition-all duration-300 md:ml-0">
         <header className="md:hidden sticky top-0 z-30 bg-white/80 dark:bg-main-bg-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700/50 flex items-center justify-between p-4">
-          <button onClick={() => setSidebarOpen(true)} aria-label="Abrir menu">
-            <MenuIcon className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-4">
+            <button onClick={() => setSidebarOpen(true)} aria-label="Abrir menu">
+              <MenuIcon className="w-6 h-6" />
+            </button>
+            {logoUrl && (
+              <img src={logoUrl} alt="Logo" className="h-8 w-auto object-contain" />
+            )}
+          </div>
            <button 
               onClick={toggleTheme} 
               className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"

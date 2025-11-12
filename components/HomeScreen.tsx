@@ -56,7 +56,9 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ games, currentUser, onRegister,
             <p className="mt-1 text-gray-500 dark:text-gray-400">Escolha um dia e participe do sorteio!</p>
         </div>
         {currentUser.role === 'admin' && (
-             <button className="flex items-center justify-center px-5 py-3 bg-brand-blue text-white font-semibold rounded-lg shadow-md hover:bg-brand-blue-dark transition-colors">
+             <button 
+                onClick={() => onNavigate('gameForm')}
+                className="flex items-center justify-center px-5 py-3 bg-brand-blue text-white font-semibold rounded-lg shadow-md hover:bg-brand-blue-dark transition-colors">
                 <PlusIcon className="w-5 h-5 mr-2" />
                 Novo Jogo
             </button>

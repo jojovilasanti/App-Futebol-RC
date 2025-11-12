@@ -11,6 +11,7 @@ interface AdminPanelProps {
   onNavigate: (view: View, id?: string) => void;
   onStartDraw: (gameId: string) => void;
   onSaveChanges: (data: { users: User[], invitations: Invitation[], logoUrl: string | null }) => void;
+  onDeleteGame: (gameId: string) => void;
   currentLogo: string | null;
 }
 
@@ -27,7 +28,7 @@ const StatCard: React.FC<{ icon: React.ReactNode; title: string; value: string |
   </div>
 );
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, invitations, onNavigate, onStartDraw, onSaveChanges, currentLogo }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, invitations, onNavigate, onStartDraw, onSaveChanges, currentLogo, onDeleteGame }) => {
   const [activeTab, setActiveTab] = useState('Dashboard');
   
   const [localUsers, setLocalUsers] = useState<User[]>(users);
@@ -51,7 +52,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, invitations, onNa
   }, [currentLogo]);
 
 
-  const tabs = ['Dashboard', 'Jogos', 'Campeonatos', 'Sorteios', 'Usuários', 'Configurações', 'Regras', 'Feedbacks'];
+  const tabs = ['Dashboard', 'Jogos', 'Sorteios', 'Usuários', 'Campeonatos', 'Configurações', 'Regras', 'Feedbacks'];
 
   // Calculate stats for the dashboard (using local state for accuracy)
   const totalGames = games.length;
@@ -74,6 +75,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, invitations, onNa
         }
         return acc;
     }, {} as Record<string, Game[]>);
+  }, [games]);
+  
+  const allGamesSorted = useMemo(() => {
+    return [...games].sort((a,b) => {
+        const [dayA, monthA, yearA] = a.date.split('/');
+        const dateA = new Date(`${yearA}-${monthA}-${dayA}T${a.time}:00`);
+        const [dayB, monthB, yearB] = b.date.split('/');
+        const dateB = new Date(`${yearB}-${monthB}-${dayB}T${b.time}:00`);
+        return dateB.getTime() - dateA.getTime();
+    });
   }, [games]);
 
   const pendingUsers = useMemo(() => localUsers.filter(u => u.status === 'pending'), [localUsers]);
@@ -156,7 +167,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, invitations, onNa
         rating: 3,
         level: 1,
         xp: 0,
-// FIX: The user attributes were not matching the User type. They should be an object with score and count.
         attributes: { attack: { score: 50, count: 1 }, defense: { score: 50, count: 1 }, speed: { score: 50, count: 1 }, passing: { score: 50, count: 1 } },
     };
 
@@ -197,6 +207,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, invitations, onNa
       setHasChanges(false);
     }
   };
+  
+  const getStatusInfo = (status: GameStatus) => {
+    switch (status) {
+      case 'open': return { text: "Abertas", color: "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300" };
+      case 'drawing': return { text: "Sorteando", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300" };
+      case 'closed': return { text: "Fechadas", color: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300" };
+      case 'finished': return { text: "Finalizado", color: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300" };
+      default: return { text: "", color: "" };
+    }
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -208,7 +228,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, invitations, onNa
                             <h3 className="text-2xl font-bold">Criar Novo Jogo</h3>
                             <p className="text-white/80 mt-1">Configure um novo jogo e comece a receber inscrições.</p>
                         </div>
-                        <button className="bg-white text-brand-blue font-semibold px-6 py-3 rounded-lg flex-shrink-0 hover:bg-gray-200 transition-colors">
+                        <button onClick={() => onNavigate('gameForm')} className="bg-white text-brand-blue font-semibold px-6 py-3 rounded-lg flex-shrink-0 hover:bg-gray-200 transition-colors">
                             Criar Agora
                         </button>
                     </div>
@@ -230,6 +250,42 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, invitations, onNa
                             <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">Em breve...</p>
                         </div>
                     </div>
+                </div>
+            );
+        case 'Jogos':
+            return (
+                <div className="bg-white dark:bg-sidebar-bg p-6 rounded-xl">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                        <h3 className="text-xl font-bold">Gerenciar Jogos</h3>
+                        <button onClick={() => onNavigate('gameForm')} className="flex items-center justify-center w-full sm:w-auto px-4 py-2 bg-brand-blue text-white font-semibold rounded-lg shadow-md hover:bg-brand-blue-dark transition-colors">
+                            <PlusIcon className="w-5 h-5 mr-2" />
+                            Novo Jogo
+                        </button>
+                    </div>
+                    <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
+                        {allGamesSorted.map(game => {
+                            const statusInfo = getStatusInfo(game.status);
+                            return (
+                                <div key={game.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50 gap-3">
+                                    <div className="flex-grow">
+                                        <p className="font-bold text-gray-800 dark:text-gray-100">
+                                            {game.date} às {game.time}
+                                        </p>
+                                        <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                            <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${statusInfo.color}`}>{statusInfo.text}</span>
+                                            <span><UsersIcon className="w-4 h-4 inline mr-1"/>{game.registrants.length} inscritos</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex-shrink-0 self-end sm:self-center">
+                                         <button onClick={() => onDeleteGame(game.id)} className="p-2 text-red-600 rounded-full hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors">
+                                            <TrashIcon className="w-5 h-5"/>
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                     {allGamesSorted.length === 0 && <p className="text-center text-gray-500 dark:text-gray-400 py-8">Nenhum jogo criado.</p>}
                 </div>
             );
         case 'Sorteios':

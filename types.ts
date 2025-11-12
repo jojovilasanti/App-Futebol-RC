@@ -75,4 +75,4 @@ export interface Achievement {
 }
 
 
-export type View = 'home' | 'draw' | 'admin' | 'results' | 'history' | 'rules' | 'profile' | 'championships' | 'championshipDetails' | 'championshipForm' | 'trading' | 'rating';
+export type View = 'home' | 'draw' | 'admin' | 'results' | 'history' | 'rules' | 'profile' | 'championships' | 'championshipDetails' | 'championshipForm' | 'trading' | 'rating' | 'gameForm';
