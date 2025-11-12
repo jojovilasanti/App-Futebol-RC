@@ -7,6 +7,8 @@ export interface User {
   membershipNumber: string;
   role: 'member' | 'admin' | 'guest';
   goals: number;
+  status?: 'active' | 'pending';
+  email?: string;
 }
 
 export type GameStatus = 'open' | 'closed' | 'drawing' | 'finished';
@@ -42,6 +44,13 @@ export interface Trade {
   fromGameId: string;
   toGameId: string;
   status: 'pending' | 'accepted' | 'declined';
+}
+
+export interface Invitation {
+  id: string;
+  email: string;
+  status: 'sent' | 'registered';
+  sentAt: Date;
 }
 
 export type View = 'home' | 'draw' | 'admin' | 'results' | 'history' | 'rules' | 'profile' | 'championships' | 'championshipDetails' | 'championshipForm' | 'trading';

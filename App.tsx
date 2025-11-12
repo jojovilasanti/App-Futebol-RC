@@ -1,8 +1,10 @@
 
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { User, Game, GameStatus, View, Championship, Trade } from './types';
+import { User, Game, GameStatus, View, Championship, Trade, Invitation } from './types';
 import { MOCK_USERS, MOCK_GAMES, MOCK_CHAMPIONSHIPS } from './data/mockData';
 import LoginScreen from './components/LoginScreen';
+import RegisterScreen from './components/RegisterScreen';
 import Sidebar from './components/Sidebar';
 import HomeScreen from './components/HomeScreen';
 import DrawScreen from './components/DrawScreen';
@@ -13,6 +15,8 @@ import ChampionshipDetailsScreen from './components/ChampionshipDetailsScreen';
 import ChampionshipForm from './components/ChampionshipForm';
 import TradingScreen from './components/TradingScreen';
 import { MenuIcon, SunIcon, MoonIcon } from './components/icons/Icons';
+
+type NewUserData = Omit<User, 'id' | 'avatarUrl' | 'role' | 'goals' | 'status'>;
 
 const GUEST_USER: User = {
   id: 'guest',
@@ -32,12 +36,15 @@ const App: React.FC = () => {
   const [games, setGames] = useState<Game[]>(MOCK_GAMES);
   const [championships, setChampionships] = useState<Championship[]>(MOCK_CHAMPIONSHIPS);
   const [tradeProposals, setTradeProposals] = useState<Trade[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [activeView, setActiveView] = useState<View>('home');
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const [activeChampionshipId, setActiveChampionshipId] = useState<string | null>(null);
   const [activeTradingDate, setActiveTradingDate] = useState<string | null>(null);
   const [championshipFormMode, setChampionshipFormMode] = useState<'create' | 'edit'>('create');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+  const [authView, setAuthView] = useState<'login' | 'register'>('login');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -58,10 +65,80 @@ const App: React.FC = () => {
       u => u.name.toLowerCase() === name.toLowerCase() && u.membershipNumber === membershipNumber
     );
     if (user) {
-      setCurrentUser(user);
+      if (user.status === 'pending') {
+        alert('Seu cadastro está aguardando aprovação do administrador.');
+      } else {
+        setCurrentUser(user);
+      }
     } else {
-      alert('Nome ou número do título inválido.');
+      alert('Usuário ou senha inválidos. Por favor, verifique seus dados ou cadastre-se.');
     }
+  };
+  
+  const handleRegisterSubmit = (newUserData: NewUserData) => {
+    const userExists = users.some(u => u.email === newUserData.email || u.membershipNumber === newUserData.membershipNumber);
+    if (userExists) {
+        alert('Um usuário com este e-mail ou número de título já existe.');
+        return;
+    }
+      
+    const newUser: User = {
+        ...newUserData,
+        id: `user-${Date.now()}`,
+        avatarUrl: `https://ui-avatars.com/api/?name=${newUserData.name.charAt(0)}&background=random&color=fff&size=128`,
+        role: 'member',
+        goals: 0,
+        status: 'pending',
+    };
+    setUsers(prev => [...prev, newUser]);
+    
+    setInvitations(prev => prev.map(inv => 
+        inv.email.toLowerCase() === newUser.email?.toLowerCase() ? { ...inv, status: 'registered' } : inv
+    ));
+
+    alert('Cadastro realizado com sucesso! Aguarde a aprovação do administrador para acessar o sistema.');
+    setAuthView('login');
+  };
+
+  const handleApproveUser = (userId: string) => {
+    setUsers(prev => prev.map(u => u.id === userId ? {...u, status: 'active'} : u));
+  };
+
+  const handleRejectUser = (userId: string) => {
+      if (window.confirm('Tem certeza que deseja recusar este cadastro?')) {
+          setUsers(prev => prev.filter(u => u.id !== userId));
+      }
+  };
+
+  const handlePromoteUserToAdmin = (userId: string) => {
+    if (window.confirm('Tem certeza que deseja promover este usuário a administrador? Esta ação não pode ser desfeita.')) {
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: 'admin' } : u));
+    }
+  };
+
+  const handleSendInvite = (email: string) => {
+      const userExists = users.some(u => u.email?.toLowerCase() === email.toLowerCase());
+      if (userExists) {
+          alert('Já existe um sócio cadastrado com este e-mail.');
+          return;
+      }
+      const invitationExists = invitations.some(inv => inv.email.toLowerCase() === email.toLowerCase());
+      if (invitationExists) {
+          alert('Um convite para este e-mail já foi enviado.');
+          return;
+      }
+
+      const newInvitation: Invitation = {
+          id: `inv-${Date.now()}`,
+          email: email,
+          status: 'sent',
+          sentAt: new Date(),
+      };
+      setInvitations(prev => [newInvitation, ...prev]);
+  };
+
+  const handleUpdateLogo = (newLogoDataUrl: string) => {
+    setLogoUrl(newLogoDataUrl);
   };
 
   const handleLogout = () => {
@@ -242,8 +319,6 @@ const App: React.FC = () => {
               return newGames;
           });
           
-          // Update this trade to accepted and remove all other pending trades involving these two players
-// FIX: Explicitly set the return type of the map callback to `Trade` to prevent type widening of the `status` property.
           setTradeProposals(prev => prev.map((t): Trade => t.id === tradeId ? {...t, status: 'accepted'} : t)
             .filter(t => t.status === 'accepted' || (t.status === 'pending' && t.fromPlayerId !== trade.fromPlayerId && t.toPlayerId !== trade.fromPlayerId && t.fromPlayerId !== trade.toPlayerId && t.toPlayerId !== trade.toPlayerId))
           );
@@ -261,7 +336,21 @@ const App: React.FC = () => {
   }, [games]);
 
   if (!currentUser) {
-    return <LoginScreen onLogin={handleLogin} onLoginAsGuest={handleLoginAsGuest} theme={theme} onToggleTheme={toggleTheme} />;
+    if (authView === 'login') {
+        return <LoginScreen 
+                    onLogin={handleLogin} 
+                    onLoginAsGuest={handleLoginAsGuest} 
+                    theme={theme} 
+                    onToggleTheme={toggleTheme} 
+                    onNavigateToRegister={() => setAuthView('register')}
+                />;
+    }
+    return <RegisterScreen 
+                onRegister={handleRegisterSubmit}
+                onNavigateToLogin={() => setAuthView('login')}
+                theme={theme}
+                onToggleTheme={toggleTheme}
+            />
   }
 
   const renderContent = () => {
@@ -282,8 +371,15 @@ const App: React.FC = () => {
         return <AdminPanel 
           games={games} 
           users={users} 
+          invitations={invitations}
           onNavigate={navigateTo}
           onStartDraw={handleStartDraw}
+          onApproveUser={handleApproveUser}
+          onRejectUser={handleRejectUser}
+          onSendInvite={handleSendInvite}
+          onPromoteUserToAdmin={handlePromoteUserToAdmin}
+          onUpdateLogo={handleUpdateLogo}
+          currentLogo={logoUrl}
         />;
       case 'trading':
         return activeTradingDate && activeTradingGames.length > 0 ? (
@@ -346,6 +442,7 @@ const App: React.FC = () => {
         isOpen={isSidebarOpen}
         setIsOpen={setSidebarOpen}
         activeTradingDates={activeTradingDates}
+        logoUrl={logoUrl}
       />
       
       <div className="flex-1 flex flex-col transition-all duration-300 md:ml-0">

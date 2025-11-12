@@ -7,9 +7,10 @@ interface LoginScreenProps {
   onLoginAsGuest: () => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
+  onNavigateToRegister: () => void;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginAsGuest, theme, onToggleTheme }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginAsGuest, theme, onToggleTheme, onNavigateToRegister }) => {
   const [name, setName] = useState('');
   const [membershipNumber, setMembershipNumber] = useState('');
 
@@ -76,10 +77,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginAsGuest, them
             </div>
           </div>
           
-           <div className="text-xs text-center text-gray-500 dark:text-gray-400">
-             <p>Use <strong>Administrador / 9999</strong> para admin ou um nome da lista / <strong>1001</strong> - <strong>1005</strong> para sócios.</p>
-           </div>
-
           <div>
             <button
               type="submit"
@@ -89,6 +86,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginAsGuest, them
             </button>
           </div>
         </form>
+         <div className="text-sm text-center">
+            <a href="#" onClick={(e) => { e.preventDefault(); onNavigateToRegister(); }} className="font-medium text-brand-blue hover:text-brand-blue-dark dark:hover:text-brand-blue-light">
+              Ainda não tem conta? Cadastre-se
+            </a>
+        </div>
         <div className="relative flex items-center justify-center my-2">
           <div className="absolute inset-0 flex items-center" aria-hidden="true">
             <div className="w-full border-t border-gray-300 dark:border-gray-600" />

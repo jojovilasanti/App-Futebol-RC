@@ -12,6 +12,7 @@ interface SidebarProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   activeTradingDates: string[];
+  logoUrl: string | null;
 }
 
 interface NavItem {
@@ -61,7 +62,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   activeView,
   isOpen,
   setIsOpen,
-  activeTradingDates
+  activeTradingDates,
+  logoUrl
 }) => {
   const navItems: NavItem[] = [
     { view: 'home', label: 'Início', icon: <HomeIcon className="w-6 h-6" /> },
@@ -108,7 +110,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         aria-label="Sidebar"
       >
         <div className="flex items-center justify-center p-6 border-b border-gray-700/50 h-20 shrink-0">
-           <h1 className="text-2xl font-bold text-white">Futebol RC</h1>
+           {logoUrl ? (
+             <img src={logoUrl} alt="Logo" className="h-12 object-contain" />
+           ) : (
+             <h1 className="text-2xl font-bold text-white">Futebol RC</h1>
+           )}
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">

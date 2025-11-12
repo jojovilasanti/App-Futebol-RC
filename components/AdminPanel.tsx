@@ -1,14 +1,21 @@
 
-import React, { useState, useMemo } from 'react';
-import { Game, User, View, GameStatus } from '../types';
-import { PlusIcon, TrophyIcon, UsersIcon, ClipboardListIcon, ChatAltIcon, CogIcon, ClockIcon, TicketIcon } from './icons/Icons';
 
-// FIX: Removed unused props `onUpdateGameStatus`, `onSetDrawnPlayers`, and `onSetCaptains` to match component usage.
+import React, { useState, useMemo } from 'react';
+import { Game, User, View, GameStatus, Invitation } from '../types';
+import { PlusIcon, TrophyIcon, UsersIcon, ClipboardListIcon, ChatAltIcon, CogIcon, ClockIcon, TicketIcon, PaperAirplaneIcon, TrashIcon, CheckCircleIcon, ArrowUpCircleIcon, EnvelopeIcon } from './icons/Icons';
+
 interface AdminPanelProps {
   games: Game[];
   users: User[];
+  invitations: Invitation[];
   onNavigate: (view: View, id?: string) => void;
   onStartDraw: (gameId: string) => void;
+  onApproveUser: (userId: string) => void;
+  onRejectUser: (userId: string) => void;
+  onSendInvite: (email: string) => void;
+  onPromoteUserToAdmin: (userId: string) => void;
+  onUpdateLogo: (logoDataUrl: string) => void;
+  currentLogo: string | null;
 }
 
 const StatCard: React.FC<{ icon: React.ReactNode; title: string; value: string | number; subtitle: string; color: string; }> = ({ icon, title, value, subtitle, color }) => (
@@ -24,10 +31,11 @@ const StatCard: React.FC<{ icon: React.ReactNode; title: string; value: string |
   </div>
 );
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, onNavigate, onStartDraw }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, invitations, onNavigate, onStartDraw, onApproveUser, onRejectUser, onSendInvite, onPromoteUserToAdmin, onUpdateLogo, currentLogo }) => {
   const [activeTab, setActiveTab] = useState('Dashboard');
+  const [inviteEmail, setInviteEmail] = useState('');
 
-  const tabs = ['Dashboard', 'Jogos', 'Campeonatos', 'Sorteios', 'Usuários', 'Regras', 'Feedbacks'];
+  const tabs = ['Dashboard', 'Jogos', 'Campeonatos', 'Sorteios', 'Usuários', 'Configurações', 'Regras', 'Feedbacks'];
 
   // Calculate stats for the dashboard
   const totalGames = games.length;
@@ -35,7 +43,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, onNavigate, onSta
   const finishedGames = games.filter(g => g.status === 'finished').length;
   
   const totalUsers = users.length;
-  const activeUsers = users.filter(u => u.role !== 'admin').length; // simple logic for now
+  const activeUsers = users.filter(u => u.role !== 'admin' && u.status === 'active').length;
   const adminUsers = users.filter(u => u.role === 'admin').length;
 
   const totalInscriptions = games.reduce((acc, game) => acc + game.registrants.length, 0);
@@ -51,6 +59,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, onNavigate, onSta
         return acc;
     }, {} as Record<string, Game[]>);
   }, [games]);
+
+  const pendingUsers = useMemo(() => users.filter(u => u.status === 'pending'), [users]);
+  const activeMembers = useMemo(() => users.filter(u => u.status === 'active' && u.role === 'member'), [users]);
+
+  const handleInviteSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (inviteEmail.trim()) {
+          onSendInvite(inviteEmail.trim());
+          setInviteEmail('');
+      }
+  };
+  
+  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file && file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+              onUpdateLogo(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+      } else {
+        alert('Por favor, selecione um arquivo de imagem válido.');
+      }
+  };
+
 
   const renderContent = () => {
     switch (activeTab) {
@@ -140,6 +173,126 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, onNavigate, onSta
                     <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">
                         Aqui você pode criar, editar e excluir campeonatos. Use a tela principal de campeonatos para gerenciar os existentes.
                     </p>
+                </div>
+            );
+        case 'Usuários':
+            return (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Left Column */}
+                    <div className="space-y-6">
+                        {/* Pending Approvals */}
+                        <div className="bg-white dark:bg-sidebar-bg p-6 rounded-xl">
+                            <h3 className="text-xl font-bold mb-4">Aprovar Cadastros ({pendingUsers.length})</h3>
+                            {pendingUsers.length > 0 ? (
+                                <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                                    {pendingUsers.map(user => (
+                                        <div key={user.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                                            <div>
+                                                <p className="font-bold text-gray-800 dark:text-gray-100">{user.name}</p>
+                                                <p className="text-sm text-gray-500 dark:text-gray-400">@{user.nickname} - {user.position}</p>
+                                            </div>
+                                            <div className="flex space-x-2">
+                                                <button onClick={() => onApproveUser(user.id)} className="p-2 text-white bg-green-500 rounded-full hover:bg-green-600"><CheckCircleIcon className="w-5 h-5"/></button>
+                                                <button onClick={() => onRejectUser(user.id)} className="p-2 text-white bg-red-600 rounded-full hover:bg-red-700"><TrashIcon className="w-5 h-5"/></button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-gray-500 dark:text-gray-400 text-sm">Nenhum cadastro pendente.</p>
+                            )}
+                        </div>
+                        {/* Invite User */}
+                        <div className="bg-white dark:bg-sidebar-bg p-6 rounded-xl">
+                            <h3 className="text-xl font-bold mb-4">Convidar Novo Sócio</h3>
+                            <form onSubmit={handleInviteSubmit} className="flex space-x-2">
+                                <input
+                                    type="email"
+                                    value={inviteEmail}
+                                    onChange={e => setInviteEmail(e.target.value)}
+                                    placeholder="email@do.socio"
+                                    className="flex-grow appearance-none rounded-md relative block w-full px-4 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                                />
+                                <button type="submit" className="flex items-center justify-center px-4 py-2 bg-brand-blue text-white font-semibold rounded-lg shadow-md hover:bg-brand-blue-dark">
+                                    <PaperAirplaneIcon className="w-5 h-5"/>
+                                </button>
+                            </form>
+                            <div className="mt-6">
+                                <h4 className="font-semibold mb-3 text-gray-800 dark:text-gray-200 flex items-center"><EnvelopeIcon className="w-5 h-5 mr-2" /> Convites Enviados</h4>
+                                {invitations.length > 0 ? (
+                                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                                        {invitations.map(inv => (
+                                            <div key={inv.id} className="flex items-center justify-between text-sm p-2 rounded-md bg-gray-50 dark:bg-gray-700/50">
+                                                <div className="truncate">
+                                                    <p className="font-medium text-gray-700 dark:text-gray-300 truncate">{inv.email}</p>
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                        Enviado em: {inv.sentAt.toLocaleDateString('pt-BR')}
+                                                    </p>
+                                                </div>
+                                                {inv.status === 'sent' ? (
+                                                    <span className="text-xs font-bold text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/50 px-2 py-1 rounded-full">Pendente</span>
+                                                ) : (
+                                                    <span className="text-xs font-bold text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/50 px-2 py-1 rounded-full">Cadastrado</span>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum convite enviado ainda.</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    {/* Right Column */}
+                    <div className="bg-white dark:bg-sidebar-bg p-6 rounded-xl">
+                        <h3 className="text-xl font-bold mb-4">Sócios Ativos ({activeMembers.length})</h3>
+                        <div className="space-y-2 max-h-[34rem] overflow-y-auto pr-2">
+                          {activeMembers.map(user => (
+                            <div key={user.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                                <div className="flex items-center overflow-hidden">
+                                    <img src={user.avatarUrl} alt={user.nickname} className="w-8 h-8 rounded-full flex-shrink-0"/>
+                                    <div className="ml-3">
+                                      <p className="font-semibold text-sm text-gray-800 dark:text-gray-100 truncate">{user.nickname}</p>
+                                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.name}</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => onPromoteUserToAdmin(user.id)}
+                                    className="p-2 text-blue-500 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors ml-2 flex-shrink-0"
+                                    title="Promover a Administrador"
+                                >
+                                    <ArrowUpCircleIcon className="w-5 h-5"/>
+                                </button>
+                            </div>
+                          ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        case 'Configurações':
+             return (
+                <div className="bg-white dark:bg-sidebar-bg p-6 rounded-xl">
+                    <h3 className="text-xl font-bold mb-4">Personalizar Aparência</h3>
+                    <div className="space-y-4">
+                        <div>
+                            <label htmlFor="logo-upload" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Logo do Aplicativo
+                            </label>
+                            <div className="mt-1 flex items-center space-x-4">
+                                <span className="inline-block h-20 w-40 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                                    {currentLogo ? (
+                                        <img src={currentLogo} alt="Logo atual" className="h-full w-full object-contain" />
+                                    ) : (
+                                        <span className="text-xs text-gray-500 dark:text-gray-400">Sem logo</span>
+                                    )}
+                                </span>
+                                <label htmlFor="logo-upload" className="cursor-pointer bg-white dark:bg-gray-700 py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue">
+                                    <span>Trocar</span>
+                                    <input id="logo-upload" name="logo-upload" type="file" className="sr-only" accept="image/*" onChange={handleLogoFileChange} />
+                                </label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             );
         default:
