@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { User, Game, Achievement, View } from '../types';
-import { StarIcon, TrophyIcon, CrownIcon, ShieldCheckIcon, FireIcon, HandThumbUpIcon, BoltIcon, ForwardIcon, PencilSquareIcon, HeartIcon, PlusCircleIcon, CheckCircleIcon } from './icons/Icons';
+import { StarIcon, TrophyIcon, CrownIcon, ShieldCheckIcon, FireIcon, HandThumbUpIcon, BoltIcon, ForwardIcon, PencilSquareIcon, HeartIcon, PlusCircleIcon, CheckCircleIcon, RunningIcon } from './icons/Icons';
 
 interface ProfileScreenProps {
   user: User;
@@ -45,10 +45,11 @@ const AttributeMeter: React.FC<{ label: string; value: number; icon: React.React
 );
 
 const getPhysicalConditionInfo = (condition?: User['physicalCondition']) => {
+    const runningIcon = <RunningIcon className="w-4 h-4 mr-1.5" />;
     switch (condition) {
-        case 'Excelente': return { text: 'Excelente', color: 'bg-green-500', icon: <CheckCircleIcon className="w-4 h-4 mr-1.5" /> };
-        case 'Bom': return { text: 'Bom', color: 'bg-blue-500', icon: <HandThumbUpIcon className="w-4 h-4 mr-1.5" /> };
-        case 'Regular': return { text: 'Regular', color: 'bg-yellow-500', icon: <BoltIcon className="w-4 h-4 mr-1.5" /> };
+        case 'Excelente': return { text: 'Excelente', color: 'bg-green-500', icon: runningIcon };
+        case 'Bom': return { text: 'Bom', color: 'bg-blue-500', icon: runningIcon };
+        case 'Regular': return { text: 'Regular', color: 'bg-yellow-500', icon: runningIcon };
         case 'Lesionado': return { text: 'Lesionado', color: 'bg-red-500', icon: <PlusCircleIcon className="w-4 h-4 mr-1.5" /> };
         default: return { text: 'N/A', color: 'bg-gray-500', icon: <PlusCircleIcon className="w-4 h-4 mr-1.5" /> };
     }

@@ -257,3 +257,13 @@ export const PlusCircleIcon: React.FC<{ className?: string }> = ({ className }) 
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
 );
+
+export const RunningIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round">
+     <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+     <circle cx="13" cy="4" r="1"></circle>
+     <path d="M4 17l5 1l.75 -1.5"></path>
+     <path d="M15 21l-4 -4l-3.5 -2l-3.5 4"></path>
+     <path d="M11 14l-1 -2l-2 -3l2 -2l3 2l2 3l-2 3z"></path>
+  </svg>
+);
