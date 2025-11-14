@@ -10,9 +10,8 @@ interface AdminPanelProps {
   invitations: Invitation[];
   onNavigate: (view: View, id?: string) => void;
   onStartDraw: (gameId: string) => void;
-  onSaveChanges: (data: { users: User[], invitations: Invitation[], logoUrl: string | null }) => void;
+  onSaveChanges: (data: { users: User[], invitations: Invitation[] }) => void;
   onDeleteGame: (gameId: string) => void;
-  currentLogo: string | null;
 }
 
 const StatCard: React.FC<{ icon: React.ReactNode; title: string; value: string | number; subtitle: string; color: string; }> = ({ icon, title, value, subtitle, color }) => (
@@ -28,12 +27,11 @@ const StatCard: React.FC<{ icon: React.ReactNode; title: string; value: string |
   </div>
 );
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, invitations, onNavigate, onStartDraw, onSaveChanges, currentLogo, onDeleteGame }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, invitations, onNavigate, onStartDraw, onSaveChanges, onDeleteGame }) => {
   const [activeTab, setActiveTab] = useState('Dashboard');
   
   const [localUsers, setLocalUsers] = useState<User[]>(users);
   const [localInvitations, setLocalInvitations] = useState<Invitation[]>(invitations);
-  const [localLogo, setLocalLogo] = useState<string | null>(currentLogo);
   const [hasChanges, setHasChanges] = useState(false);
 
   const [inviteEmail, setInviteEmail] = useState('');
@@ -47,9 +45,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, invitations, onNa
   useEffect(() => {
     setLocalInvitations(invitations);
   }, [invitations]);
-  useEffect(() => {
-    setLocalLogo(currentLogo);
-  }, [currentLogo]);
 
 
   const tabs = ['Dashboard', 'Jogos', 'Sorteios', 'Usuários', 'Campeonatos', 'Configurações', 'Regras', 'Feedbacks'];
@@ -66,7 +61,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, invitations, onNa
   const totalInscriptions = games.reduce((acc, game) => acc + game.registrants.length, 0);
 
   const gamesByDate = useMemo(() => {
-    return games.reduce((acc, game) => {
+    // Fix: Explicitly type the accumulator in the reduce function to correct type inference.
+    // This resolves the errors on lines 65, 277, and 279 by ensuring `gamesByDate` and subsequently `gamesOnDay` are correctly typed.
+    return games.reduce((acc: Record<string, Game[]>, game) => {
         if (game.status === 'open' || game.status === 'closed') {
             if (!acc[game.date]) {
                 acc[game.date] = [];
@@ -74,7 +71,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, invitations, onNa
             acc[game.date].push(game);
         }
         return acc;
-    }, {} as Record<string, Game[]>);
+    }, {});
   }, [games]);
   
   const allGamesSorted = useMemo(() => {
@@ -176,25 +173,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, invitations, onNa
     setHasChanges(true);
   };
 
-  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setLocalLogo(reader.result as string);
-            setHasChanges(true);
-        };
-        reader.readAsDataURL(file);
-    } else {
-      alert('Por favor, selecione um arquivo de imagem válido.');
-    }
-  };
-
   const handleSave = () => {
     onSaveChanges({
       users: localUsers,
       invitations: localInvitations,
-      logoUrl: localLogo,
     });
     setHasChanges(false);
   };
@@ -203,7 +185,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, invitations, onNa
     if (window.confirm('Tem certeza que deseja descartar suas alterações não salvas?')) {
       setLocalUsers(users);
       setLocalInvitations(invitations);
-      setLocalLogo(currentLogo);
       setHasChanges(false);
     }
   };
@@ -418,8 +399,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ games, users, invitations, onNa
         case 'Configurações':
              return (
                 <div className="bg-white dark:bg-sidebar-bg p-6 rounded-xl">
-                    <h3 className="text-xl font-bold mb-4">Personalizar Aparência</h3>
-                    <div className="space-y-4"><div><label htmlFor="logo-upload" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Logo do Aplicativo</label><div className="mt-1 flex items-center space-x-4"><span className="inline-block h-20 w-40 rounded-md overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center">{localLogo ? <img src={localLogo} alt="Logo atual" className="h-full w-full object-contain" /> : <span className="text-xs text-gray-500 dark:text-gray-400">Sem logo</span>}</span><label htmlFor="logo-upload" className="cursor-pointer bg-white dark:bg-gray-700 py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-blue"><span>Trocar</span><input id="logo-upload" name="logo-upload" type="file" className="sr-only" accept="image/*" onChange={handleLogoFileChange} /></label></div></div></div>
+                    <h3 className="text-xl font-bold mb-4">Configurações</h3>
+                     <p className="text-gray-500 dark:text-gray-400 mt-2 text-sm">Em breve...</p>
                 </div>
             );
         default:

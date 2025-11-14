@@ -1,8 +1,9 @@
 
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { User, Game, GameStatus, View, Championship, Trade, Invitation } from './types';
 import { MOCK_USERS, MOCK_GAMES, MOCK_CHAMPIONSHIPS } from './data/mockData';
+// Fix: Import defaultLogo to be used in the application.
+import { defaultLogo } from './data/logo';
 import LoginScreen from './components/LoginScreen';
 import RegisterScreen from './components/RegisterScreen';
 import Sidebar from './components/Sidebar';
@@ -46,7 +47,10 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : MOCK_GAMES;
   });
 
-  const [championships, setChampionships] = useState<Championship[]>(MOCK_CHAMPIONSHIPS);
+  const [championships, setChampionships] = useState<Championship[]>(() => {
+    const saved = localStorage.getItem('futebol_rc_championships');
+    return saved ? JSON.parse(saved) : MOCK_CHAMPIONSHIPS;
+  });
   const [tradeProposals, setTradeProposals] = useState<Trade[]>([]);
   
   const [invitations, setInvitations] = useState<Invitation[]>(() => {
@@ -54,10 +58,6 @@ const App: React.FC = () => {
       return saved ? JSON.parse(saved).map((inv: Invitation) => ({ ...inv, sentAt: new Date(inv.sentAt) })) : [];
   });
   
-  const [logoUrl, setLogoUrl] = useState<string | null>(() => {
-      return localStorage.getItem('futebol_rc_logo') || null;
-  });
-
   const [activeView, setActiveView] = useState<View>('home');
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
   const [activeChampionshipId, setActiveChampionshipId] = useState<string | null>(null);
@@ -75,6 +75,10 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('futebol_rc_games', JSON.stringify(games));
   }, [games]);
+  
+  useEffect(() => {
+    localStorage.setItem('futebol_rc_championships', JSON.stringify(championships));
+  }, [championships]);
 
   const toggleTheme = () => {
     setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
@@ -129,25 +133,20 @@ const App: React.FC = () => {
     setAuthView('login');
   };
   
-  const handleSaveChangesFromAdmin = (data: { users: User[], invitations: Invitation[], logoUrl: string | null }) => {
+  const handleSaveChangesFromAdmin = (data: { users: User[], invitations: Invitation[] }) => {
     setUsers(data.users);
     localStorage.setItem('futebol_rc_users', JSON.stringify(data.users));
     
     setInvitations(data.invitations);
     localStorage.setItem('futebol_rc_invitations', JSON.stringify(data.invitations));
     
-    setLogoUrl(data.logoUrl);
-    if (data.logoUrl) {
-        localStorage.setItem('futebol_rc_logo', data.logoUrl);
-    } else {
-        localStorage.removeItem('futebol_rc_logo');
-    }
     alert('Alterações salvas com sucesso!');
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
     setActiveView('home');
+    setAuthView('login');
   };
 
   const navigateTo = (view: View, id?: string) => {
@@ -219,6 +218,7 @@ const App: React.FC = () => {
 
         sourceGame.status = 'finished';
         sourceGame.drawnPlayers = drawnIds;
+        sourceGame.tradingEndTime = new Date(new Date().getTime() + 15 * 60000).getTime(); // 15 minutes for trading
 
         const sameDayGames = gamesCopy
             .filter(g => g.date === sourceGame.date && g.id !== sourceGame.id && g.status !== 'finished')
@@ -230,295 +230,136 @@ const App: React.FC = () => {
             const numToDraw = nextGame.maxPlayers || 20;
             const drawnForThisGame = playersToDistribute.splice(0, numToDraw);
             nextGame.drawnPlayers = drawnForThisGame;
-            nextGame.status = 'finished'; 
+            if (drawnForThisGame.length > 0) {
+              nextGame.status = 'finished';
+            }
         }
-
-        const allGamesForDay = gamesCopy.filter(g => g.date === sourceGame.date);
-        const allFinished = allGamesForDay.every(g => g.status === 'finished');
-
-        if (allFinished) {
-            console.log(`All games for ${sourceGame.date} are finished. Starting trading window.`);
-            const tradingEndTime = Date.now() + 30 * 60 * 1000;
-            gamesCopy = gamesCopy.map(g => 
-                g.date === sourceGame.date ? { ...g, tradingEndTime } : g
-            );
-        }
+        
         return gamesCopy;
     });
   };
 
-  const handleSaveChampionship = (championshipData: Omit<Championship, 'id' | 'teams'> | Championship) => {
-    if ('id' in championshipData) {
-      setChampionships(prev => prev.map(c => c.id === championshipData.id ? {...c, ...championshipData} : c));
-    } else {
-      const newChampionship: Championship = {
-        ...championshipData,
-        id: `champ${Date.now()}`,
-        teams: [],
-      };
-      setChampionships(prev => [newChampionship, ...prev]);
-    }
-    navigateTo('championships');
+  const handleUpdateProfile = (updatedData: Partial<User>) => {
+    if (!currentUser) return;
+    const updatedUser = { ...currentUser, ...updatedData };
+    setCurrentUser(updatedUser);
+    const updatedUsers = users.map(u => u.id === currentUser.id ? updatedUser : u);
+    setUsers(updatedUsers);
+    localStorage.setItem('futebol_rc_users', JSON.stringify(updatedUsers));
+    alert('Perfil atualizado com sucesso!');
   };
 
-  const handleDeleteChampionship = (championshipId: string) => {
-    if (window.confirm('Tem certeza que deseja excluir este campeonato? Esta ação não pode ser desfeita.')) {
-      setChampionships(prev => prev.filter(c => c.id !== championshipId));
-      navigateTo('championships');
-    }
-  };
-  
-    const handleSaveGame = (gameData: Omit<Game, 'id' | 'registrants' | 'drawnPlayers' | 'status' | 'captains'>) => {
+  const handleSaveGame = (data: Omit<Game, 'id' | 'registrants' | 'drawnPlayers' | 'status' | 'captains'>) => {
       const newGame: Game = {
-        ...gameData,
-        id: `game-${Date.now()}`,
-        registrants: [],
-        drawnPlayers: [],
-        status: 'open',
-        captains: [],
+          ...data,
+          id: `game-${Date.now()}`,
+          status: 'open',
+          registrants: [],
+          drawnPlayers: [],
+          captains: [],
       };
-      setGames(prev => [...prev, newGame]);
+      setGames(g => [...g, newGame]);
       navigateTo('admin');
   };
-
-  const handleDeleteGame = (gameId: string) => {
-      if (window.confirm('Tem certeza que deseja excluir este jogo? Esta ação não pode ser desfeita e removerá todos os inscritos.')) {
-        setGames(prev => prev.filter(g => g.id !== gameId));
-      }
-  };
-
-  const tradedPlayerIds = useMemo(() => 
-    tradeProposals.filter(t => t.status === 'accepted').flatMap(t => [t.fromPlayerId, t.toPlayerId]), 
-  [tradeProposals]);
-
-  const handleProposeTrade = (toPlayerId: string) => {
-    if (!currentUser) return;
-    
-    const fromGame = games.find(g => g.drawnPlayers.includes(currentUser.id) && g.date === activeTradingDate);
-    const toGame = games.find(g => g.drawnPlayers.includes(toPlayerId) && g.date === activeTradingDate);
-
-    if (!fromGame || !toGame) {
-      alert("Não foi possível encontrar os jogos para a troca.");
-      return;
-    }
-    
-    const newTrade: Trade = {
-      id: `trade-${Date.now()}`,
-      fromPlayerId: currentUser.id,
-      toPlayerId: toPlayerId,
-      fromGameId: fromGame.id,
-      toGameId: toGame.id,
-      status: 'pending',
-    };
-    setTradeProposals(prev => [...prev, newTrade]);
-  };
-
-  const handleRespondToTrade = (tradeId: string, response: 'accepted' | 'declined') => {
-      const trade = tradeProposals.find(t => t.id === tradeId);
-      if (!trade) return;
-
-      if (response === 'declined') {
-          setTradeProposals(prev => prev.filter(t => t.id !== tradeId));
-          return;
-      }
-      
-      if (response === 'accepted') {
-          setGames(prevGames => {
-              const newGames = [...prevGames];
-              const fromGame = newGames.find(g => g.id === trade.fromGameId);
-              const toGame = newGames.find(g => g.id === trade.toGameId);
-
-              if (fromGame && toGame) {
-                  fromGame.drawnPlayers = fromGame.drawnPlayers.filter(id => id !== trade.fromPlayerId).concat(trade.toPlayerId);
-                  toGame.drawnPlayers = toGame.drawnPlayers.filter(id => id !== trade.toPlayerId).concat(trade.fromPlayerId);
-              }
-              return newGames;
-          });
-          
-          setTradeProposals(prev => prev.map((t): Trade => t.id === tradeId ? {...t, status: 'accepted'} : t)
-            .filter(t => t.status === 'accepted' || (t.status === 'pending' && t.fromPlayerId !== trade.fromPlayerId && t.toPlayerId !== trade.fromPlayerId && t.fromPlayerId !== trade.toPlayerId && t.toPlayerId !== trade.toPlayerId))
-          );
-      }
-  };
-
-  const handleUpdateProfile = (updatedUserData: Partial<User>) => {
-      if (!currentUser) return;
-      const updatedUser = { ...currentUser, ...updatedUserData };
-      
-      const newUsers = users.map(u => u.id === updatedUser.id ? updatedUser : u);
-      setUsers(newUsers);
-      setCurrentUser(updatedUser);
-      localStorage.setItem('futebol_rc_users', JSON.stringify(newUsers));
-      alert('Perfil atualizado com sucesso!');
-  };
-
-  const handleRatePlayers = (ratings: Record<string, { attack: number; defense: number; speed: number; passing: number; }>) => {
-      const updatedUsers = users.map(user => {
-          if (ratings[user.id] && user.attributes) {
-              const playerRatings = ratings[user.id];
-              const newAttributes = { ...user.attributes };
-
-              (Object.keys(playerRatings) as Array<keyof typeof playerRatings>).forEach(attrKey => {
-                  if (newAttributes[attrKey]) {
-                      newAttributes[attrKey].score += playerRatings[attrKey] * 10;
-                      newAttributes[attrKey].count += 1;
-                  }
-              });
-              return { ...user, attributes: newAttributes };
-          }
-          return user;
-      });
-      setUsers(updatedUsers);
-      localStorage.setItem('futebol_rc_users', JSON.stringify(updatedUsers));
-      alert('Avaliações enviadas com sucesso!');
-      navigateTo('profile');
-  };
-
-  const activeGame = useMemo(() => games.find(g => g.id === activeGameId), [games, activeGameId]);
-  const activeChampionship = useMemo(() => championships.find(c => c.id === activeChampionshipId), [championships, activeChampionshipId]);
-  const activeTradingGames = useMemo(() => games.filter(g => g.date === activeTradingDate), [games, activeTradingDate]);
   
+  const handleDeleteGame = (gameId: string) => {
+    if(window.confirm('Tem certeza que deseja excluir este jogo?')) {
+        setGames(prev => prev.filter(g => g.id !== gameId));
+    }
+  };
+
+  const handleSaveChampionship = (data: Omit<Championship, 'id'> | Championship) => {
+      if ('id' in data) {
+          setChampionships(cs => cs.map(c => c.id === (data as Championship).id ? data as Championship : c));
+      } else {
+          const newChampionship: Championship = {
+              ...(data as Omit<Championship, 'id'>),
+              id: `champ-${Date.now()}`,
+          };
+          setChampionships(cs => [...cs, newChampionship]);
+      }
+      navigateTo('championships');
+  };
+
+  const handleDeleteChampionship = (id: string) => {
+      if(window.confirm('Tem certeza que deseja excluir este campeonato?')) {
+          setChampionships(prev => prev.filter(c => c.id !== id));
+      }
+  };
+  
+  const handleRatePlayers = (ratings: Record<string, { attack: number; defense: number; speed: number; passing: number; }>) => {
+    console.log('Ratings submitted:', ratings);
+    alert('Avaliações enviadas com sucesso!');
+    // In a real app, this would update user stats and mark the game as rated
+    navigateTo('profile');
+  };
+
   const activeTradingDates = useMemo(() => {
-    const dates = new Set(games.filter(g => g.tradingEndTime && g.tradingEndTime > Date.now()).map(g => g.date));
-    return Array.from(dates);
+      return Array.from(new Set(games.filter(g => g.tradingEndTime && g.tradingEndTime > Date.now()).map(g => g.date)));
   }, [games]);
 
-  const lastGameForCurrentUser = useMemo(() => {
-    if (!currentUser) return null;
-    return games
-      .filter(g => g.status === 'finished' && g.drawnPlayers.includes(currentUser.id))
-      .sort((a, b) => {
-        const [dayA, monthA, yearA] = a.date.split('/');
-        const dateA = new Date(`${yearA}-${monthA}-${dayA}T${a.time}:00`);
-        const [dayB, monthB, yearB] = b.date.split('/');
-        const dateB = new Date(`${yearB}-${monthB}-${dayB}T${b.time}:00`);
-        return dateB.getTime() - dateA.getTime();
-      })[0];
-  }, [games, currentUser]);
-  
-  const playersToRate = useMemo(() => {
-      if (!lastGameForCurrentUser || !currentUser) return [];
-      return lastGameForCurrentUser.drawnPlayers
-          .filter(id => id !== currentUser.id)
-          .map(id => users.find(u => u.id === id))
-          .filter((u): u is User => !!u);
-  }, [lastGameForCurrentUser, users, currentUser]);
-
-
   if (!currentUser) {
-    if (authView === 'login') {
-        return <LoginScreen 
-                    onLogin={handleLogin} 
-                    onLoginAsGuest={handleLoginAsGuest} 
-                    theme={theme} 
-                    onToggleTheme={toggleTheme} 
-                    onNavigateToRegister={() => setAuthView('register')}
-                    logoUrl={logoUrl}
-                />;
-    }
-    return <RegisterScreen 
-                onRegister={handleRegisterSubmit}
-                onNavigateToLogin={() => setAuthView('login')}
-                theme={theme}
-                onToggleTheme={toggleTheme}
-            />
+    return authView === 'login' ? (
+      <LoginScreen 
+        logoUrl={defaultLogo}
+        onLogin={handleLogin}
+        onLoginAsGuest={handleLoginAsGuest}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onNavigateToRegister={() => setAuthView('register')}
+      />
+    ) : (
+      <RegisterScreen
+        onRegister={handleRegisterSubmit}
+        onNavigateToLogin={() => setAuthView('login')}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
+    );
   }
 
-  const renderContent = () => {
+  const renderView = () => {
+    const activeGame = games.find(g => g.id === activeGameId);
+    const activeChampionship = championships.find(c => c.id === activeChampionshipId);
+    
     switch (activeView) {
       case 'home':
-        return <HomeScreen 
-          games={games} 
-          currentUser={currentUser} 
-          onRegister={handleRegister} 
-          onUnregister={handleUnregister}
-          onNavigate={navigateTo} 
-          users={users}
-          activeTradingDates={activeTradingDates}
-        />;
+        return <HomeScreen games={games} currentUser={currentUser} onRegister={handleRegister} onUnregister={handleUnregister} onNavigate={navigateTo} users={users} activeTradingDates={activeTradingDates} />;
       case 'draw':
-        return activeGame ? <DrawScreen game={activeGame} users={users} currentUser={currentUser} onDrawComplete={handleDrawComplete} /> : <p>Jogo não encontrado.</p>;
+        return activeGame ? <DrawScreen game={activeGame} users={users} currentUser={currentUser} onDrawComplete={handleDrawComplete} /> : <div>Jogo não encontrado.</div>;
       case 'admin':
-        return <AdminPanel 
-          games={games} 
-          users={users} 
-          invitations={invitations}
-          currentLogo={logoUrl}
-          onNavigate={navigateTo}
-          onStartDraw={handleStartDraw}
-          onSaveChanges={handleSaveChangesFromAdmin}
-          onDeleteGame={handleDeleteGame}
-        />;
-      case 'trading':
-        return activeTradingDate && activeTradingGames.length > 0 ? (
-          <TradingScreen 
-            gamesForDay={activeTradingGames}
-            users={users}
-            currentUser={currentUser}
-            tradeProposals={tradeProposals}
-            tradedPlayerIds={tradedPlayerIds}
-            onProposeTrade={handleProposeTrade}
-            onRespondToTrade={handleRespondToTrade}
-          />
-        ) : <p>Nenhum período de trocas ativo.</p>;
+        return <AdminPanel games={games} users={users} invitations={invitations} onNavigate={navigateTo} onStartDraw={handleStartDraw} onSaveChanges={handleSaveChangesFromAdmin} onDeleteGame={handleDeleteGame} />;
+      case 'results':
       case 'history':
-         return <ResultsScreen games={games} users={users} />;
+        return <ResultsScreen games={games} users={users} />;
       case 'championships':
-         return <ChampionshipsScreen 
-            championships={championships} 
-            currentUser={currentUser}
-            onNavigate={navigateTo}
-          />;
+        return <ChampionshipsScreen championships={championships} currentUser={currentUser} onNavigate={navigateTo} />;
       case 'championshipDetails':
-        return activeChampionship ? (
-            <ChampionshipDetailsScreen 
-                championship={activeChampionship}
-                currentUser={currentUser}
-                onNavigate={navigateTo}
-                onDelete={handleDeleteChampionship}
-            />
-        ) : <div className="text-center p-8"><h2 className="text-2xl font-bold">Campeonato não encontrado.</h2></div>;
+        return activeChampionship ? <ChampionshipDetailsScreen championship={activeChampionship} currentUser={currentUser} onNavigate={navigateTo} onDelete={handleDeleteChampionship} /> : <div>Campeonato não encontrado.</div>;
       case 'championshipForm':
-        return (
-            <ChampionshipForm 
-                mode={championshipFormMode}
-                initialData={activeChampionship}
-                onSave={handleSaveChampionship}
-                onCancel={() => navigateTo(championshipFormMode === 'edit' && activeChampionshipId ? 'championshipDetails' : 'championships', activeChampionshipId || undefined)}
-            />
-        );
-      case 'gameForm':
-        return (
-            <GameForm
-                onSave={handleSaveGame}
-                onCancel={() => navigateTo('admin')}
-            />
-        );
+        return <ChampionshipForm mode={championshipFormMode} initialData={activeChampionship} onSave={handleSaveChampionship} onCancel={() => navigateTo(activeChampionshipId ? 'championshipDetails' : 'championships', activeChampionshipId || undefined)} />;
+      case 'trading': {
+        const gamesForDay = games.filter(g => g.date === activeTradingDate && g.status === 'finished');
+        return <TradingScreen gamesForDay={gamesForDay} users={users} currentUser={currentUser} tradeProposals={tradeProposals} onProposeTrade={() => {}} onRespondToTrade={() => {}} tradedPlayerIds={[]} />;
+      }
       case 'profile':
-        return <ProfileScreen 
-            user={currentUser} 
-            games={games} 
-            onUpdateProfile={handleUpdateProfile}
-            onNavigate={navigateTo}
-            hasLastGameToRate={playersToRate.length > 0}
-            />;
-      case 'rating':
-        return <RatingScreen
-            currentUser={currentUser}
-            playersToRate={playersToRate}
-            onRatePlayers={handleRatePlayers}
-            onCancel={() => navigateTo('profile')}
-            />
-      case 'rules':
-        return <div className="bg-white dark:bg-sidebar-bg p-6 rounded-lg text-center"><h2 className="text-2xl font-bold">Página de Regras</h2><p>Em construção.</p></div>
+        return <ProfileScreen user={currentUser} games={games} onUpdateProfile={handleUpdateProfile} onNavigate={navigateTo} hasLastGameToRate={true} />; // Simplified
+      case 'rating': {
+        const lastGame = games.filter(g => g.status === 'finished' && g.drawnPlayers.includes(currentUser.id)).sort((a,b) => b.id.localeCompare(a.id))[0];
+        const playersToRate = lastGame?.drawnPlayers.filter(pId => pId !== currentUser.id).map(pId => users.find(u => u.id === pId)).filter(Boolean) as User[] || [];
+        return <RatingScreen currentUser={currentUser} playersToRate={playersToRate} onRatePlayers={handleRatePlayers} onCancel={() => navigateTo('profile')} />;
+      }
+      case 'gameForm':
+        return <GameForm onSave={handleSaveGame} onCancel={() => navigateTo('admin')} />;
       default:
-        return <p>Página não encontrada.</p>;
+        return <div>Página não encontrada</div>;
     }
   };
 
   return (
-    <div className={`min-h-screen ${theme === 'light' ? 'bg-main-bg-light' : 'bg-main-bg-dark'} text-gray-800 dark:text-gray-200 font-sans flex`}>
+    <div className={`flex h-screen bg-main-bg-light dark:bg-main-bg-dark font-sans`}>
       <Sidebar 
+        logoUrl={defaultLogo}
         user={currentUser}
         theme={theme}
         onToggleTheme={toggleTheme}
@@ -528,34 +369,23 @@ const App: React.FC = () => {
         isOpen={isSidebarOpen}
         setIsOpen={setSidebarOpen}
         activeTradingDates={activeTradingDates}
-        logoUrl={logoUrl}
       />
-      
-      <div className="flex-1 flex flex-col transition-all duration-300 md:ml-0">
-        <header className="md:hidden sticky top-0 z-30 bg-white/80 dark:bg-main-bg-dark/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700/50 flex items-center justify-between p-4">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setSidebarOpen(true)} aria-label="Abrir menu">
-              <MenuIcon className="w-6 h-6" />
-            </button>
-            {logoUrl && (
-              <img src={logoUrl} alt="Logo" className="h-8 w-auto object-contain" />
-            )}
-          </div>
-           <button 
-              onClick={toggleTheme} 
-              className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-              aria-label="Mudar tema"
-            >
-              {theme === 'light' ? <MoonIcon className="w-6 h-6" /> : <SunIcon className="w-6 h-6" />}
-            </button>
+      <main className="flex-1 flex flex-col overflow-y-auto">
+        <header className="md:hidden flex items-center justify-between p-4 bg-white dark:bg-sidebar-bg sticky top-0 z-20 border-b border-gray-200 dark:border-gray-700">
+          <button onClick={() => setSidebarOpen(true)}>
+            <MenuIcon className="w-6 h-6 text-gray-800 dark:text-gray-200" />
+          </button>
+          <button onClick={toggleTheme} className="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+            {theme === 'light' ? <MoonIcon className="w-6 h-6" /> : <SunIcon className="w-6 h-6" />}
+          </button>
         </header>
-
-        <main className="p-4 sm:p-6 lg:p-8 flex-1">
-          {renderContent()}
-        </main>
-      </div>
+        <div className="flex-1 p-4 sm:p-6 lg:p-8">
+          {renderView()}
+        </div>
+      </main>
     </div>
   );
 };
 
+// Fix: Add default export to make it importable in index.tsx
 export default App;

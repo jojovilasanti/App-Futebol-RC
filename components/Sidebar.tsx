@@ -3,6 +3,7 @@ import { User, View } from '../types';
 import { HomeIcon, HistoryIcon, RulesIcon, UserCircleIcon, AdminIcon, LogoutIcon, SunIcon, MoonIcon, TrophyIcon, SwitchHorizontalIcon, IdentificationIcon } from './icons/Icons';
 
 interface SidebarProps {
+  logoUrl: string;
   user: User;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
@@ -12,7 +13,6 @@ interface SidebarProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   activeTradingDates: string[];
-  logoUrl: string | null;
 }
 
 interface NavItem {
@@ -54,6 +54,7 @@ const NavLink: React.FC<{
 };
 
 const Sidebar: React.FC<SidebarProps> = ({
+  logoUrl,
   user,
   theme,
   onToggleTheme,
@@ -63,7 +64,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
   setIsOpen,
   activeTradingDates,
-  logoUrl
 }) => {
   const navItems: NavItem[] = [
     { view: 'home', label: 'Início', icon: <HomeIcon className="w-6 h-6" /> },
@@ -109,10 +109,8 @@ const Sidebar: React.FC<SidebarProps> = ({
         }`}
         aria-label="Sidebar"
       >
-        <div className="flex items-center justify-center p-6 border-b border-gray-700/50 h-20 shrink-0 gap-3">
-           {logoUrl && (
-             <img src={logoUrl} alt="Logo" className="h-10 w-10 object-contain" />
-           )}
+        <div className="flex items-center justify-center p-6 border-b border-gray-700/50 h-20 shrink-0">
+           <img src={logoUrl} alt="Futebol RC Logo" className="h-10 w-10 mr-3" />
            <h1 className="text-2xl font-bold text-white">Futebol RC</h1>
         </div>
 

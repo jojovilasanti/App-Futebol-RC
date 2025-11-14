@@ -4,15 +4,15 @@ import React, { useState } from 'react';
 import { SunIcon, MoonIcon } from './icons/Icons';
 
 interface LoginScreenProps {
+  logoUrl: string;
   onLogin: (name: string, membershipNumber: string) => void;
   onLoginAsGuest: () => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
   onNavigateToRegister: () => void;
-  logoUrl: string | null;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginAsGuest, theme, onToggleTheme, onNavigateToRegister, logoUrl }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ logoUrl, onLogin, onLoginAsGuest, theme, onToggleTheme, onNavigateToRegister }) => {
   const [name, setName] = useState('');
   const [membershipNumber, setMembershipNumber] = useState('');
 
@@ -25,12 +25,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginAsGuest, them
 
   return (
     <div className="min-h-screen bg-main-bg-light dark:bg-main-bg-dark text-gray-800 dark:text-gray-200">
-      <header className="fixed top-0 left-0 right-0 p-4 flex justify-between items-center z-10">
-        {logoUrl ? (
-            <img src={logoUrl} alt="Logo" className="h-10 w-auto object-contain" />
-        ) : (
-            <div /> // Placeholder to keep theme toggle on the right
-        )}
+      <header className="fixed top-0 left-0 right-0 p-4 flex justify-end items-center z-10">
         <button 
             onClick={onToggleTheme} 
             className="p-2 rounded-full text-gray-600 dark:text-gray-300 bg-white/20 dark:bg-gray-900/20 backdrop-blur-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
@@ -42,7 +37,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onLoginAsGuest, them
       <div className="flex flex-col items-center justify-center min-h-screen p-4 pt-20">
         <div className="w-full max-w-md p-8 space-y-8">
           <div className="text-center">
-            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">
+            <div className="mx-auto h-48 w-48 rounded-full bg-white shadow-xl flex items-center justify-center p-4">
+              <img src={logoUrl} alt="Futebol RC Logo" className="h-full w-full object-contain" />
+            </div>
+            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mt-8">
               Futebol RC
             </h2>
             <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
